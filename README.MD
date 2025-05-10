@@ -15,7 +15,6 @@ To run any project in this repository:
 ## Folder Structure
 
 - `lib/` — Main Dart source files.
-- `android/`, `ios/`, `web/` — Platform-specific files.
 - `test/` — Unit and widget tests.
 - `extrafiles/` — Ignored in `.gitignore`.
 
