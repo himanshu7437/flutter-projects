@@ -1,122 +1,228 @@
+
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MemoryGameApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
+class MemoryGameApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'Memory Card Game',
+      theme: ThemeData(primarySwatch: Colors.deepPurple),
+      home: DifficultyScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class DifficultyScreen extends StatelessWidget {
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.deepPurple[50],
+      appBar: AppBar(title: Text("Select Difficulty")),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            DifficultyButton(label: "Easy", pairCount: 4),
+            SizedBox(height: 10,),
+            DifficultyButton(label: "Medium", pairCount: 6),
+            SizedBox(height: 10,),
+            DifficultyButton(label: "Hard", pairCount: 8),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class DifficultyButton extends StatelessWidget {
+  final String label;
+  final int pairCount;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+  DifficultyButton({required this.label, required this.pairCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      child: Text(label, style: TextStyle(fontSize: 20)),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MemoryGame(pairCount: pairCount),
+          ),
+        );
+      },
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 5,
+      ),
+    );
+  }
+}
+
+class CardModel {
+  String content;
+  bool isFlipped;
+  bool isMatched;
+
+  CardModel({required this.content, this.isFlipped = false, this.isMatched = false});
+}
+
+class MemoryGame extends StatefulWidget {
+  final int pairCount;
+
+  MemoryGame({required this.pairCount});
+
+  @override
+  _MemoryGameState createState() => _MemoryGameState();
+}
+
+class _MemoryGameState extends State<MemoryGame> {
+  List<CardModel> _cards = [];
+  CardModel? _firstSelected;
+  int _score = 0;
+  Timer? _timer;
+  int _seconds = 0;
+
+  List<String> _emojis = ["🍎", "🚗", "🐶", "🏀", "🎵", "🚀", "🌟", "🍔", "🧠", "📚", "🎮", "🎲"];
+
+  @override
+  void initState() {
+    super.initState();
+    _startGame();
+  }
+
+  void _startGame() {
+    _score = 0;
+    _seconds = 0;
+    _firstSelected = null;
+    _timer?.cancel();
+    _startTimer();
+
+    final shuffled = [..._emojis]..shuffle();
+    final selected = shuffled.take(widget.pairCount).toList();
+    final allCards = [...selected, ...selected]..shuffle();
+    _cards = allCards.map((e) => CardModel(content: e)).toList();
+
+    setState(() {});
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(Duration(seconds: 1), (_) {
+      setState(() {
+        _seconds++;
+      });
     });
+  }
+
+  void _onCardTap(int index) {
+    if (_cards[index].isFlipped || _cards[index].isMatched) return;
+
+    setState(() {
+      _cards[index].isFlipped = true;
+    });
+
+    if (_firstSelected == null) {
+      _firstSelected = _cards[index];
+    } else {
+      if (_firstSelected!.content == _cards[index].content) {
+        setState(() {
+          _firstSelected!.isMatched = true;
+          _cards[index].isMatched = true;
+          _score += 10;
+          _firstSelected = null;
+        });
+        // Optionally play match sound
+      } else {
+        Future.delayed(Duration(milliseconds: 700), () {
+          setState(() {
+            _firstSelected!.isFlipped = false;
+            _cards[index].isFlipped = false;
+            _firstSelected = null;
+          });
+          // Optionally play mismatch sound
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Widget _buildCard(CardModel card, int index) {
+    return GestureDetector(
+      onTap: () => _onCardTap(index),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+        margin: EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: card.isFlipped || card.isMatched ? Colors.white : Colors.deepPurple,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 3)],
+        ),
+        child: Center(
+          child: Text(
+            card.isFlipped || card.isMatched ? card.content : "",
+            style: TextStyle(fontSize: 32),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final isWon = _cards.isNotEmpty && _cards.every((card) => card.isMatched);
+
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text("Memory - ${widget.pairCount * 2} Cards"),
+        actions: [
+          IconButton(onPressed: _startGame, icon: Icon(Icons.refresh)),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: Column(
+        children: [
+          SizedBox(height: 10),
+          Text("Score: $_score   |   Time: $_seconds sec", style: TextStyle(fontSize: 18)),
+          SizedBox(height: 10),
+          Expanded(
+            child: GridView.builder(
+              padding: EdgeInsets.all(10),
+              itemCount: _cards.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+              ),
+              itemBuilder: (_, i) => _buildCard(_cards[i], i),
             ),
-          ],
-        ),
+          ),
+          if (isWon)
+            Column(
+              children: [
+                Text("🎉 You Won!", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                ElevatedButton(onPressed: _startGame, child: Text("Play Again"))
+              ],
+            ),
+          SizedBox(height: 20)
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
