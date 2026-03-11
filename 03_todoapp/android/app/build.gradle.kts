@@ -6,12 +6,18 @@ plugins {
 
 android {
     namespace = "com.example.todoapp"
-    compileSdk = 34
+
+    // UPDATED SDK VERSION
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.todoapp"
+
         minSdk = 21
-        targetSdk = 34
+
+        // UPDATED TARGET SDK
+        targetSdk = 36
+
         versionCode = 1
         versionName = "1.0"
     }
